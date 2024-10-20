@@ -39,7 +39,7 @@ setup_node() {
 
 # 函数：配置环境变量
 configure_env() {
-    if [ ! -f ".env" ]; then
+    if [ ! -f ".env" ];then
         echo -e "${GREEN}创建并配置 .env 文件...${NC}"
         read -p "请输入 L1_URL (例如: https://ethereum-sepolia-rpc.publicnode.com): " L1_URL
         read -p "请输入 L1_BEACON (例如: https://ethereum-sepolia-beacon-api.publicnode.com): " L1_BEACON
@@ -48,12 +48,19 @@ configure_env() {
         read -p "请输入 L1_TRUST_RPC (true/false, 默认: true): " L1_TRUST_RPC
         read -p "请输入 RPC 地址 (默认: 127.0.0.1): " RPC_ADDR
         read -p "请输入 RPC 端口 (默认: 9545): " RPC_PORT
+        read -p "请选择 SYNC_MODE (consensus-layer 或 execution-layer, 默认: consensus-layer): " SYNC_MODE
 
         # 如果用户没有输入特定值，使用默认值
         L2_URL=${L2_URL:-"http://localhost:9545"}
         L1_TRUST_RPC=${L1_TRUST_RPC:-"true"}
         RPC_ADDR=${RPC_ADDR:-"127.0.0.1"}
         RPC_PORT=${RPC_PORT:-"9545"}
+        SYNC_MODE=${SYNC_MODE:-"consensus-layer"}
+
+        # 确保 P2P 相关的路径也已设置
+        P2P_PRIV_PATH=${P2P_PRIV_PATH:-"/root/.p2p_priv"}
+        P2P_DISCOVERY_PATH=${P2P_DISCOVERY_PATH:-"/root/.p2p_discovery"}
+        P2P_PEERSTORE_PATH=${P2P_PEERSTORE_PATH:-"/root/.p2p_peerstore"}
 
         cat <<EOL > .env
 L1_URL=${L1_URL}
@@ -64,12 +71,15 @@ L2_JWT_SECRET=jwt.txt
 L1_TRUST_RPC=${L1_TRUST_RPC}
 RPC_ADDR=${RPC_ADDR}
 RPC_PORT=${RPC_PORT}
-SYNC_MODE=full
+SYNC_MODE=${SYNC_MODE}
+P2P_PRIV_PATH=${P2P_PRIV_PATH}
+P2P_DISCOVERY_PATH=${P2P_DISCOVERY_PATH}
+P2P_PEERSTORE_PATH=${P2P_PEERSTORE_PATH}
 L1_RPC_KIND=geth
 METRICS_ENABLED=false
 METRICS_PORT=9100
 OP_NODE_P2P_PEER_BANNING=false
-ROLLUP_CONFIG=你的Rollup配置文件路径  # 如果有的话
+ROLLUP_CONFIG=你的Rollup配置文件路径
 EOL
 
         echo -e "${GREEN}.env 文件已创建并配置！${NC}"
@@ -80,7 +90,7 @@ EOL
 
 # 函数：配置 Docker Compose 文件
 configure_docker_compose() {
-    if [ -f "docker-compose.yml" ]; then
+    if [ -f "docker-compose.yml" ];then
         echo -e "${GREEN}配置 docker-compose.yml 文件...${NC}"
         read -p "请输入您的 VPS IP 地址以替换 <your_node_ip_address>: " NODE_IP
         sed -i "s/<your_node_ip_address>/${NODE_IP}/g" docker-compose.yml
@@ -125,7 +135,7 @@ check_logs() {
 
 # 主菜单函数
 main_menu() {
-    while true; do
+    while true;do
         echo -e "${GREEN}--- 节点设置主菜单 ---${NC}"
         echo "1) 更新系统包和安装基础工具"
         echo "2) 安装 Docker 和 Docker Compose"
@@ -172,3 +182,4 @@ main_menu() {
 
 # 启动主菜单
 main_menu
+
