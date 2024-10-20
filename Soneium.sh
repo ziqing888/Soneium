@@ -39,7 +39,7 @@ log_error() {
 }
 
 # 检查脚本是否以 root 权限运行
-if [ "$EUID" -ne 0" ]; then
+if [ "$EUID" -ne 0 ]; then
     log_error "请以 root 权限运行此脚本"
     exit 1
 fi
