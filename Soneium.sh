@@ -1,161 +1,110 @@
 #!/bin/bash
 
-# 定义颜色
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # 无颜色
-
-# 函数：更新系统包和安装基础工具
-update_system() {
-    echo -e "${GREEN}更新系统包并安装基本工具...${NC}"
-    sudo apt update && sudo apt upgrade -y
-    sudo apt install curl git jq build-essential gcc unzip wget lz4 -y
-    echo -e "${GREEN}系统更新和工具安装完成！${NC}"
-}
-
 # 函数：安装 Docker 和 Docker Compose
 install_docker() {
-    echo -e "${GREEN}安装 Docker...${NC}"
+    echo "更新系统并安装 Docker..."
+    sudo apt update && sudo apt upgrade -y
     sudo apt install docker.io -y
-    docker --version
 
-    echo -e "${GREEN}安装 Docker Compose...${NC}"
+    echo "安装 Docker Compose..."
     sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     sudo chmod +x /usr/local/bin/docker-compose
-    docker-compose --version
 
-    echo -e "${GREEN}Docker 和 Docker Compose 安装完成！${NC}"
+    # 检查 Docker 和 Docker Compose 版本
+    docker --version
+    docker-compose --version
+    echo "Docker 和 Docker Compose 已安装。"
 }
 
-# 函数：克隆 GitHub 仓库并生成 JWT 秘钥
-setup_node() {
-    echo -e "${GREEN}克隆 GitHub 仓库...${NC}"
+# 函数：克隆 GitHub 仓库
+clone_repo() {
+    echo "克隆 Soneium 仓库..."
     git clone https://github.com/Soneium/soneium-node.git
     cd soneium-node/minato || exit
-    echo -e "${GREEN}生成 JWT 秘钥...${NC}"
+    echo "仓库已克隆并进入 minato 目录。"
+}
+
+# 函数：生成 JWT 秘钥
+generate_jwt() {
+    echo "生成 JWT 秘钥..."
     openssl rand -hex 32 > jwt.txt
-    echo -e "${GREEN}JWT 秘钥生成完成！${NC}"
+    echo "JWT 秘钥已生成：jwt.txt"
 }
 
-# 函数：配置环境变量
-configure_env() {
-    if [ ! -f ".env" ]; then
-        echo -e "${GREEN}创建并配置 .env 文件...${NC}"
-        read -p "请输入 L1_URL (默认: https://ethereum-sepolia-rpc.publicnode.com): " L1_URL
-        L1_URL=${L1_URL:-https://ethereum-sepolia-rpc.publicnode.com}
-        
-        read -p "请输入 L1_BEACON (默认: https://ethereum-sepolia-beacon-api.publicnode.com): " L1_BEACON
-        L1_BEACON=${L1_BEACON:-https://ethereum-sepolia-beacon-api.publicnode.com}
-        
-        read -p "请输入您的 VPS IP 地址: " P2P_IP
-        read -p "请输入 RPC 端口 (默认: 9545): " RPC_PORT
-        RPC_PORT=${RPC_PORT:-9545}
-
-        cat <<EOL > .env
-L1_URL=${L1_URL}
-L1_BEACON=${L1_BEACON}
-P2P_ADVERTISE_IP=${P2P_IP}
-RPC_PORT=${RPC_PORT}
-L1_RPC_KIND=standard
-L1_TRUST_RPC=true
-SYNC_MODE=consensus-layer
-L2_JWT_SECRET=$(cat jwt.txt)
-EOL
-
-        echo -e "${GREEN}.env 文件已创建并配置！${NC}"
-    else
-        echo -e "${RED}.env 文件已存在，跳过配置！${NC}"
-    fi
+# 函数：编辑 .env 文件
+edit_env() {
+    echo "准备编辑 .env 文件..."
+    mv sample.env .env
+    echo "请在 .env 文件中替换以下内容："
+    echo "1. RPC 端点: https://ethereum-sepolia-rpc.publicnode.com"
+    echo "2. Beacon API 端点: https://ethereum-sepolia-beacon-api.publicnode.com"
+    echo "3. P2P_ADVERTISE_IP: <你的 VPS 公共 IP>"
+    nano .env
 }
 
-# 函数：配置 Docker Compose 文件
-configure_docker_compose() {
-    if [ -f "docker-compose.yml" ]; then
-        echo -e "${GREEN}配置 docker-compose.yml 文件...${NC}"
-        read -p "请输入您的 VPS IP 地址以替换 <your_node_ip_address>: " NODE_IP
-        sed -i "s/<your_node_ip_address>/${NODE_IP}/g" docker-compose.yml
-        echo -e "${GREEN}docker-compose.yml 文件配置完成！${NC}"
-    else
-        echo -e "${RED}docker-compose.yml 文件未找到！${NC}"
-    fi
+# 函数：编辑 docker-compose.yml 文件
+edit_docker_compose() {
+    echo "准备编辑 docker-compose.yml 文件..."
+    echo "请在 docker-compose.yml 文件中替换 <your_node_ip_address> 为你的 VPS 公共 IP。"
+    nano docker-compose.yml
 }
 
 # 函数：启动 Docker 容器
-start_docker_containers() {
-    echo -e "${GREEN}启动 Docker 容器...${NC}"
+start_docker() {
+    echo "启动 Docker 容器..."
     docker-compose up -d
-    echo -e "${GREEN}Docker 容器启动完成！${NC}"
+    echo "Docker 容器已启动。"
 }
 
 # 函数：查看日志
 check_logs() {
-    echo -e "${GREEN}请选择要查看日志的容器:${NC}"
-    echo "1) op-node-minato"
-    echo "2) op-geth-minato"
-    echo "3) 返回主菜单"
-    read -rp "输入您的选择: " log_choice
+    echo "选择要查看的日志类型："
+    echo "1. 查看 op-node-minato 日志"
+    echo "2. 查看 op-geth-minato 日志"
+    read -rp "输入选择的编号: " log_choice
 
     case $log_choice in
-    1)
-        echo -e "${GREEN}查看 op-node-minato 日志...${NC}"
-        docker-compose logs -f op-node-minato
-        ;;
-    2)
-        echo -e "${GREEN}查看 op-geth-minato 日志...${NC}"
-        docker-compose logs -f op-geth-minato
-        ;;
-    3)
-        main_menu
-        ;;
-    *)
-        echo -e "${RED}无效选择！${NC}"
-        ;;
+        1)
+            echo "正在查看 op-node-minato 日志..."
+            docker-compose logs -f op-node-minato
+            ;;
+        2)
+            echo "正在查看 op-geth-minato 日志..."
+            docker-compose logs -f op-geth-minato
+            ;;
+        *)
+            echo "无效的选择，请重试。"
+            ;;
     esac
 }
 
 # 主菜单函数
 main_menu() {
     while true; do
-        echo -e "${GREEN}--- 节点设置主菜单 ---${NC}"
-        echo "1) 更新系统包和安装基础工具"
-        echo "2) 安装 Docker 和 Docker Compose"
-        echo "3) 克隆 GitHub 仓库并生成 JWT 秘钥"
-        echo "4) 配置 .env 文件"
-        echo "5) 配置 docker-compose.yml 文件"
-        echo "6) 启动 Docker 容器"
-        echo "7) 查看容器日志"
-        echo "8) 退出"
-        read -rp "请选择操作 (输入数字): " choice
+        echo "=============================="
+        echo "   Minato 节点设置主菜单"
+        echo "=============================="
+        echo "1. 安装 Docker 和 Docker Compose"
+        echo "2. 克隆 Soneium GitHub 仓库"
+        echo "3. 生成 JWT 秘钥"
+        echo "4. 编辑 .env 文件"
+        echo "5. 编辑 docker-compose.yml 文件"
+        echo "6. 启动 Docker 容器"
+        echo "7. 查看 Docker 日志"
+        echo "8. 退出"
+        echo "=============================="
+        read -rp "请输入您的选择: " choice
 
         case $choice in
-        1)
-            update_system
-            ;;
-        2)
-            install_docker
-            ;;
-        3)
-            setup_node
-            ;;
-        4)
-            configure_env
-            ;;
-        5)
-            configure_docker_compose
-            ;;
-        6)
-            start_docker_containers
-            ;;
-        7)
-            check_logs
-            ;;
-        8)
-            echo -e "${GREEN}退出脚本。再见！${NC}"
-            exit
-            ;;
-        *)
-            echo -e "${RED}无效选择，请重新输入！${NC}"
-            ;;
+            1) install_docker ;;
+            2) clone_repo ;;
+            3) generate_jwt ;;
+            4) edit_env ;;
+            5) edit_docker_compose ;;
+            6) start_docker ;;
+            7) check_logs ;;
+            8) echo "退出脚本。" ; exit ;;
+            *) echo "无效的选择，请重试。" ;;
         esac
     done
 }
