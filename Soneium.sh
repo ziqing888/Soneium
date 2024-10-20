@@ -27,13 +27,20 @@ clone_repo() {
 # 函数：生成 JWT 秘钥并存储到 /etc/optimism/jwt.txt
 generate_jwt() {
     echo "生成 JWT 秘钥..."
+    
+    # 生成 JWT 秘钥
     openssl rand -hex 32 > jwt.txt
 
     # 验证 JWT 是否为 32 字节的十六进制
     jwt_value=$(cat jwt.txt)
+    
+    # 添加调试信息
+    echo "生成的 JWT 秘钥为: $jwt_value"
+    
     if [[ ${#jwt_value} -ne 64 ]]; then
-        echo "JWT 秘钥格式错误，请重新生成。"
-        exit 1
+        echo "错误：JWT 秘钥格式无效。生成的密钥不是 32 字节的十六进制格式。"
+        echo "请重新运行生成 JWT 秘钥的选项。"
+        return 1  # 返回主菜单，不退出脚本
     fi
 
     # 创建目标目录并移动 JWT 秘钥
@@ -119,24 +126,4 @@ main_menu() {
         echo "4. 配置 .env 文件"
         echo "5. 替换 docker-compose.yml 中的 VPS IP"
         echo "6. 启动 Docker 容器并检查状态"
-        echo "7. 查看 Docker 日志"
-        echo "8. 退出"
-        echo "=============================="
-        read -rp "请输入您的选择: " choice
-
-        case $choice in
-            1) install_docker ;;
-            2) clone_repo ;;
-            3) generate_jwt ;;
-            4) configure_env ;;
-            5) edit_docker_compose ;;
-            6) start_docker ;;
-            7) check_logs ;;
-            8) echo "退出脚本。" ; exit ;;
-            *) echo "无效的选择，请重试。" ;;
-        esac
-    done
-}
-
-# 启动主菜单
-main_menu
+        echo "
