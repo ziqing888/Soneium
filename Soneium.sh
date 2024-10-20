@@ -44,11 +44,18 @@ configure_env() {
         read -p "请输入 L1_URL (例如: https://ethereum-sepolia-rpc.publicnode.com): " L1_URL
         read -p "请输入 L1_BEACON (例如: https://ethereum-sepolia-beacon-api.publicnode.com): " L1_BEACON
         read -p "请输入您的 VPS IP 地址: " P2P_IP
+        read -p "请输入 RPC 端口 (默认 9545): " RPC_PORT
+
+        # 如果用户没有输入 RPC 端口，设置默认值
+        if [ -z "$RPC_PORT" ]; then
+            RPC_PORT=9545
+        fi
 
         cat <<EOL > .env
 L1_URL=${L1_URL}
 L1_BEACON=${L1_BEACON}
 P2P_ADVERTISE_IP=${P2P_IP}
+RPC_PORT=${RPC_PORT}
 EOL
 
         echo -e "${GREEN}.env 文件已创建并配置！${NC}"
