@@ -31,22 +31,33 @@ generate_jwt() {
     echo "JWT 秘钥已生成：jwt.txt"
 }
 
-# 函数：编辑 .env 文件
-edit_env() {
-    echo "准备编辑 .env 文件..."
+# 函数：配置 .env 文件并自动设置 RPC、Beacon API 和 P2P_ADVERTISE_IP
+configure_env() {
+    echo "配置 .env 文件..."
     mv sample.env .env
-    echo "请在 .env 文件中替换以下内容："
-    echo "1. RPC 端点: https://ethereum-sepolia-rpc.publicnode.com"
-    echo "2. Beacon API 端点: https://ethereum-sepolia-beacon-api.publicnode.com"
-    echo "3. P2P_ADVERTISE_IP: <你的 VPS 公共 IP>"
-    nano .env
+
+    # 直接固定 RPC 和 Beacon API 端点
+    sed -i 's|^L1_URL=.*|L1_URL=https://ethereum-sepolia-rpc.publicnode.com|' .env
+    sed -i 's|^L1_BEACON=.*|L1_BEACON=https://ethereum-sepolia-beacon-api.publicnode.com|' .env
+
+    # 读取用户的 VPS 公共 IP 地址
+    read -rp "请输入您的 VPS 公共 IP 地址: " vps_ip
+
+    # 替换 .env 文件中的 P2P_ADVERTISE_IP
+    sed -i "s|^P2P_ADVERTISE_IP=.*|P2P_ADVERTISE_IP=${vps_ip}|" .env
+
+    echo ".env 文件已更新，包含固定的 RPC 端点和用户提供的 VPS IP。"
 }
 
-# 函数：编辑 docker-compose.yml 文件
+# 函数：自动替换 docker-compose.yml 文件中的 <your_node_ip_address> 为 VPS 公共 IP
 edit_docker_compose() {
-    echo "准备编辑 docker-compose.yml 文件..."
-    echo "请在 docker-compose.yml 文件中替换 <your_node_ip_address> 为你的 VPS 公共 IP。"
-    nano docker-compose.yml
+    # 读取用户的 VPS 公共 IP 地址
+    read -rp "请输入您的 VPS 公共 IP 地址: " vps_ip
+
+    # 替换 docker-compose.yml 文件中的 <your_node_ip_address>
+    sed -i "s|<your_node_ip_address>|${vps_ip}|" docker-compose.yml
+
+    echo "docker-compose.yml 文件中的 <your_node_ip_address> 已替换为 ${vps_ip}。"
 }
 
 # 函数：启动 Docker 容器
@@ -87,8 +98,8 @@ main_menu() {
         echo "1. 安装 Docker 和 Docker Compose"
         echo "2. 克隆 Soneium GitHub 仓库"
         echo "3. 生成 JWT 秘钥"
-        echo "4. 编辑 .env 文件"
-        echo "5. 编辑 docker-compose.yml 文件"
+        echo "4. 配置 .env 文件"
+        echo "5. 替换 docker-compose.yml 中的 VPS IP"
         echo "6. 启动 Docker 容器"
         echo "7. 查看 Docker 日志"
         echo "8. 退出"
@@ -99,7 +110,7 @@ main_menu() {
             1) install_docker ;;
             2) clone_repo ;;
             3) generate_jwt ;;
-            4) edit_env ;;
+            4) configure_env ;;
             5) edit_docker_compose ;;
             6) start_docker ;;
             7) check_logs ;;
