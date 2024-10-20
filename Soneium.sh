@@ -20,7 +20,7 @@ install_docker() {
 clone_repo() {
     echo "克隆 Soneium 仓库..."
     git clone https://github.com/Soneium/soneium-node.git
-    cd soneium-node/minato || exit
+    cd soneium-node/minato || exit 1
     echo "仓库已克隆并进入 minato 目录。"
 }
 
@@ -124,26 +124,5 @@ main_menu() {
         echo "2. 克隆 Soneium GitHub 仓库"
         echo "3. 生成 JWT 秘钥"
         echo "4. 配置 .env 文件"
-        echo "5. 替换 docker-compose.yml 中的 VPS IP"
-        echo "6. 启动 Docker 容器并检查状态"
-        echo "7. 查看 Docker 日志"
-        echo "8. 退出"
-        echo "=============================="
-        read -rp "请输入您的选择: " choice
+        
 
-        case $choice in
-            1) install_docker ;;
-            2) clone_repo ;;
-            3) generate_jwt ;;
-            4) configure_env ;;
-            5) edit_docker_compose ;;
-            6) start_docker ;;
-            7) check_logs ;;
-            8) echo "退出脚本。" ; exit ;;
-            *) echo "无效的选择，请重试。" ;;
-        esac
-    done
-}
-
-# 启动主菜单
-main_menu
