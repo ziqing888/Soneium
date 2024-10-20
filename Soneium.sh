@@ -85,7 +85,11 @@ install_and_setup_node() {
     log_success "Docker Compose 安装完成"
 
     log_info "克隆 GitHub 仓库..."
-    git clone https://github.com/Soneium/soneium-node.git || { log_error "仓库克隆失败"; exit 1; }
+    if [ -d "soneium-node" ]; then
+        log_warning "soneium-node 目录已存在，跳过克隆。"
+    else
+        git clone https://github.com/Soneium/soneium-node.git || { log_error "仓库克隆失败"; exit 1; }
+    fi
     cd soneium-node/minato || { log_error "目录切换失败"; exit 1; }
     log_success "仓库克隆成功并进入 minato 目录"
 
@@ -110,7 +114,13 @@ install_and_setup_node() {
     log_info "配置 docker-compose.yml 文件..."
     # 在 docker-compose.yml 中替换 <your_node_ip_address> 并添加 --nat=extip 参数
     sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml
-    sed -i "/op-geth-minato/a \ \ \ \ --nat=extip:$VPS_IP" docker-compose.yml
+
+    # 确保 command 部分存在并插入 --nat=extip 参数
+    if grep -q "command:" docker-compose.yml; then
+        sed -i "/command:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml
+    else
+        sed -i "/op-geth-minato/a \ \ \ \ command: --nat=extip=$VPS_IP" docker-compose.yml
+    fi
     log_success "docker-compose.yml 文件配置完成"
 
     show_menu
