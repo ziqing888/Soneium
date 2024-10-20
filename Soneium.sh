@@ -24,11 +24,22 @@ clone_repo() {
     echo "仓库已克隆并进入 minato 目录。"
 }
 
-# 函数：生成 JWT 秘钥
+# 函数：生成 JWT 秘钥并存储到 /etc/optimism/jwt.txt
 generate_jwt() {
     echo "生成 JWT 秘钥..."
     openssl rand -hex 32 > jwt.txt
-    echo "JWT 秘钥已生成：jwt.txt"
+
+    # 验证 JWT 是否为 32 字节的十六进制
+    jwt_value=$(cat jwt.txt)
+    if [[ ${#jwt_value} -ne 64 ]]; then
+        echo "JWT 秘钥格式错误，请重新生成。"
+        exit 1
+    fi
+
+    # 创建目标目录并移动 JWT 秘钥
+    sudo mkdir -p /etc/optimism
+    sudo mv jwt.txt /etc/optimism/jwt.txt
+    echo "JWT 秘钥已生成并存储在 /etc/optimism/jwt.txt"
 }
 
 # 函数：配置 .env 文件并自动设置 RPC、Beacon API 和 P2P_ADVERTISE_IP
@@ -60,10 +71,17 @@ edit_docker_compose() {
     echo "docker-compose.yml 文件中的 <your_node_ip_address> 已替换为 ${vps_ip}。"
 }
 
-# 函数：启动 Docker 容器
+# 函数：启动 Docker 容器并检查网络状态
 start_docker() {
     echo "启动 Docker 容器..."
     docker-compose up -d
+
+    # 检查 Docker 服务状态
+    docker-compose ps
+
+    echo "检查 Docker 网络状态..."
+    docker network ls
+
     echo "Docker 容器已启动。"
 }
 
@@ -100,7 +118,7 @@ main_menu() {
         echo "3. 生成 JWT 秘钥"
         echo "4. 配置 .env 文件"
         echo "5. 替换 docker-compose.yml 中的 VPS IP"
-        echo "6. 启动 Docker 容器"
+        echo "6. 启动 Docker 容器并检查状态"
         echo "7. 查看 Docker 日志"
         echo "8. 退出"
         echo "=============================="
