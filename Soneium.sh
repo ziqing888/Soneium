@@ -112,14 +112,19 @@ install_and_setup_node() {
     log_success ".env 文件配置完成"
 
     log_info "配置 docker-compose.yml 文件..."
-    # 在 docker-compose.yml 中替换 <your_node_ip_address> 并添加 --nat=extip 参数
-    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml
+    if [ ! -f docker-compose.yml ]; then
+        log_error "docker-compose.yml 文件未找到。请检查路径是否正确。"
+        exit 1
+    fi
+
+    # 替换 <your_node_ip_address>
+    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "替换 docker-compose.yml 中的 IP 地址失败"; exit 1; }
 
     # 确保 command 部分存在并插入 --nat=extip 参数
     if grep -q "command:" docker-compose.yml; then
-        sed -i "/command:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml
+        sed -i "/command:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml || { log_error "在 command 中插入 --nat=extip 参数失败。"; exit 1; }
     else
-        sed -i "/op-geth-minato/a \ \ \ \ command: --nat=extip=$VPS_IP" docker-compose.yml
+        sed -i "/op-geth-minato/a \ \ \ \ command: --nat=extip=$VPS_IP" docker-compose.yml || { log_error "添加 command 行失败。"; exit 1; }
     fi
     log_success "docker-compose.yml 文件配置完成"
 
@@ -128,6 +133,9 @@ install_and_setup_node() {
 
 # 启动 Docker 容器
 start_docker() {
+    log_info "验证 docker-compose.yml 文件..."
+    docker-compose config || { log_error "docker-compose.yml 文件格式有误。"; exit 1; }
+
     log_info "启动 Docker 容器..."
     docker-compose up -d || { log_error "Docker 容器启动失败"; exit 1; }
     log_success "Docker 容器启动成功"
@@ -152,4 +160,3 @@ check_logs() {
 
 # 启动菜单
 show_menu
-
