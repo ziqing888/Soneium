@@ -38,9 +38,9 @@ log_error() {
     echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - ${1}" >> $LOG_FILE
 }
 
-# 检查脚本是否以 root 权限运行
-if [ "$EUID" -ne 0 ]; then
-    log_error "请以 root 权限运行此脚本"
+# 检查脚本是否以root权限运行
+if [ "$EUID" -ne 0 ];then
+    log_error "请以root权限运行此脚本"
     exit 1
 fi
 
@@ -85,11 +85,7 @@ install_and_setup_node() {
     log_success "Docker Compose 安装完成"
 
     log_info "克隆 GitHub 仓库..."
-    if [ -d "soneium-node" ]; then
-        log_warning "soneium-node 目录已存在，跳过克隆。"
-    else
-        git clone https://github.com/Soneium/soneium-node.git || { log_error "仓库克隆失败"; exit 1; }
-    fi
+    git clone https://github.com/Soneium/soneium-node.git || { log_error "仓库克隆失败"; exit 1; }
     cd soneium-node/minato || { log_error "目录切换失败"; exit 1; }
     log_success "仓库克隆成功并进入 minato 目录"
 
@@ -100,10 +96,10 @@ install_and_setup_node() {
     log_info "重命名 sample.env 为 .env..."
     mv sample.env .env || { log_error ".env 文件重命名失败"; exit 1; }
 
-    # 固定的 Minato 网络的 RPC 端点和 Beacon API 端点
-    L1_URL="https://rpc.minato.soneium.org/"
-    L1_BEACON="https://explorer-testnet.soneium.org/"
-    read -p "请输入你的 VPS 公共 IP 地址: " VPS_IP
+    # 让用户输入 L1_URL 和 L1_BEACON 以及 VPS IP 地址
+    read -p "请输入 L1_URL (RPC 端点): " L1_URL
+    read -p "请输入 L1_BEACON (Beacon API 端点): " L1_BEACON
+    read -p "请输入你的 VPS IP 地址: " VPS_IP
 
     log_info "配置 .env 文件..."
     sed -i "s|L1_URL=.*|L1_URL=$L1_URL|" .env
@@ -112,22 +108,8 @@ install_and_setup_node() {
     log_success ".env 文件配置完成"
 
     log_info "配置 docker-compose.yml 文件..."
-    if [ ! -f docker-compose.yml ]; then
-        log_error "docker-compose.yml 文件未找到。请检查路径是否正确。"
-        exit 1
-    fi
-
-    # 替换 <your_node_ip_address> 为用户输入的实际 IP 地址
-    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "替换 docker-compose.yml 中的 IP 地址失败"; exit 1; }
-
-    # 确保 command 或 entrypoint 部分存在并插入 --nat=extip 参数
-    if grep -q "command:" docker-compose.yml; then
-        sed -i "/command:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml || { log_error "在 command 中插入 --nat=extip 参数失败。"; exit 1; }
-    elif grep -q "entrypoint:" docker-compose.yml; then
-        sed -i "/entrypoint:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml || { log_error "在 entrypoint 中插入 --nat=extip 参数失败。"; exit 1; }
-    else
-        sed -i "/op-geth-minato/a \ \ \ \ command: --nat=extip=$VPS_IP" docker-compose.yml || { log_error "添加 command 行失败。"; exit 1; }
-    fi
+    # 在 docker-compose.yml 中替换 <your_node_ip_address>
+    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "docker-compose.yml 文件配置失败"; exit 1; }
     log_success "docker-compose.yml 文件配置完成"
 
     show_menu
@@ -135,9 +117,6 @@ install_and_setup_node() {
 
 # 启动 Docker 容器
 start_docker() {
-    log_info "验证 docker-compose.yml 文件..."
-    docker-compose config || { log_error "docker-compose.yml 文件格式有误。"; exit 1; }
-
     log_info "启动 Docker 容器..."
     docker-compose up -d || { log_error "Docker 容器启动失败"; exit 1; }
     log_success "Docker 容器启动成功"
