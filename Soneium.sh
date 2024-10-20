@@ -38,9 +38,9 @@ log_error() {
     echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - ${1}" >> $LOG_FILE
 }
 
-# 检查脚本是否以root权限运行
+# 检查脚本是否以 root 权限运行
 if [ "$EUID" -ne 0 ]; then
-    log_error "请以root权限运行此脚本"
+    log_error "请以 root 权限运行此脚本"
     exit 1
 fi
 
@@ -152,3 +152,4 @@ check_logs() {
 
 # 启动菜单
 show_menu
+
