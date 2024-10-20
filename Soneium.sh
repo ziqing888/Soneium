@@ -96,9 +96,9 @@ install_and_setup_node() {
     log_info "重命名 sample.env 为 .env..."
     mv sample.env .env || { log_error ".env 文件重命名失败"; exit 1; }
 
-    # 固定的 RPC 端点和 Beacon API 端点
-    L1_URL="https://ethereum-sepolia-rpc.publicnode.com"
-    L1_BEACON="https://ethereum-sepolia-beacon-api.publicnode.com"
+    # 固定的 Minato 网络的 RPC 端点和 Beacon API 端点
+    L1_URL="https://rpc.minato.soneium.org/"
+    L1_BEACON="https://explorer-testnet.soneium.org/"
     read -p "请输入你的 VPS IP 地址: " VPS_IP
 
     log_info "配置 .env 文件..."
@@ -108,8 +108,9 @@ install_and_setup_node() {
     log_success ".env 文件配置完成"
 
     log_info "配置 docker-compose.yml 文件..."
-    # 在 docker-compose.yml 中替换 <your_node_ip_address>
-    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "docker-compose.yml 文件配置失败"; exit 1; }
+    # 在 docker-compose.yml 中替换 <your_node_ip_address> 并添加 --nat=extip 参数
+    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml
+    sed -i "/op-geth-minato/a \ \ \ \ --nat=extip:$VPS_IP" docker-compose.yml
     log_success "docker-compose.yml 文件配置完成"
 
     show_menu
