@@ -17,6 +17,13 @@ SUCCESS_ICON="✅"
 WARNING_ICON="⚠️"
 ERROR_ICON="❌"
 
+# 显示 Logo
+function show_logo() {
+    clear
+    # 下载并显示 logo
+    curl -s https://raw.githubusercontent.com/ziqing888/logo.sh/main/logo.sh | bash
+}
+
 # 日志函数
 log_info() {
     echo -e "${BLUE}${INFO_ICON} ${1}${RESET}"
@@ -46,7 +53,7 @@ fi
 
 # 菜单函数
 show_menu() {
-    clear
+    show_logo  # 在菜单前显示 Logo
     echo -e "${BOLD}请选择一个选项:${RESET}"
     echo "1) 安装并配置节点 (包含系统更新、工具安装、Docker安装等)"
     echo "2) 启动 Docker 容器"
