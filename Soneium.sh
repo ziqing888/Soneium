@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义日志文件路径
-LOG_FILE="/var/log/dusk_script.log"
+LOG_FILE="/var/log/minato_node_setup.log"
 
 # 定义颜色代码和样式
 RED='\033[0;31m'
@@ -38,67 +38,67 @@ log_error() {
     echo "[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - ${1}" >> $LOG_FILE
 }
 
-# 检查脚本是否以root权限运行
-if [ "$EUID" -ne 0 ];then
-    log_error "请以root权限运行此脚本"
+# 确保脚本以 root 权限运行
+if [ "$(id -u)" -ne "0" ]; then
+    log_error "请以 root 用户或使用 sudo 运行此脚本"
     exit 1
 fi
 
-# 菜单函数
-show_menu() {
-    clear
-    echo -e "${BOLD}请选择一个选项:${RESET}"
-    echo "1) 安装并配置节点 (包含系统更新、工具安装、Docker安装等)"
-    echo "2) 启动 Docker 容器"
-    echo "3) 检查日志"
-    echo "4) 退出"
-    echo -n "请输入你的选择: "
-    read choice
-    case $choice in
-        1) install_and_setup_node ;;
-        2) start_docker ;;
-        3) check_logs ;;
-        4) exit 0 ;;
-        *) log_warning "无效选项，请重新选择。" ; show_menu ;;
-    esac
+# 检查并安装 Docker 和 Docker Compose
+function check_install_docker() {
+    if ! command -v docker &> /dev/null; then
+        log_info "Docker 未安装，正在安装 Docker..."
+        apt-get update
+        apt-get install -y docker.io
+        systemctl start docker
+        systemctl enable docker
+        log_success "Docker 安装完成。"
+    else
+        log_success "Docker 已安装。"
+    fi
+
+    if ! command -v docker-compose &> /dev/null; then
+        log_info "Docker Compose 未安装，正在安装 Docker Compose..."
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+        log_success "Docker Compose 安装完成。"
+    else
+        log_success "Docker Compose 已安装。"
+    fi
 }
 
-# 安装并配置节点（更新系统、安装基础工具、安装 Docker 和 Docker Compose、配置节点）
-install_and_setup_node() {
-    log_info "更新系统包..."
-    sudo apt update && sudo apt upgrade -y
-    log_success "系统包更新完成"
+# 生成 JWT 密钥并配置节点
+function setup_node() {
+    log_info "正在更新系统并安装必要的软件包..."
+    apt-get update
+    apt-get install -y wget git openssl || { log_error "软件包安装失败"; exit 1; }
 
-    log_info "安装基础工具..."
-    sudo apt install -y curl git jq build-essential gcc unzip wget lz4
-    log_success "基础工具安装完成"
+    # 检查并安装 Docker 和 Docker Compose
+    check_install_docker
 
-    log_info "安装 Docker..."
-    sudo apt install -y docker.io
-    docker --version || { log_error "Docker 未正确安装"; exit 1; }
-    log_success "Docker 安装完成"
+    log_info "正在生成 JWT 密钥..."
+    openssl rand -hex 32 > jwt.txt || { log_error "JWT 密钥生成失败"; exit 1; }
+    log_success "JWT 密钥已生成并保存在 jwt.txt 文件中。"
 
-    log_info "安装 Docker Compose..."
-    sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
-    docker-compose --version || { log_error "Docker Compose 未正确安装"; exit 1; }
-    log_success "Docker Compose 安装完成"
+    # 克隆 GitHub 存储库并进入工作目录
+    if [ -d "soneium-node" ]; then
+        log_warning "检测到之前的节点仓库，正在删除..."
+        rm -rf soneium-node
+    fi
 
-    log_info "克隆 GitHub 仓库..."
+    log_info "正在克隆 Soneium 节点存储库..."
     git clone https://github.com/Soneium/soneium-node.git || { log_error "仓库克隆失败"; exit 1; }
-    cd soneium-node/minato || { log_error "目录切换失败"; exit 1; }
+    cd soneium-node/minato || { log_error "进入目录失败"; exit 1; }
     log_success "仓库克隆成功并进入 minato 目录"
 
-    log_info "生成 JWT 密钥..."
-    openssl rand -hex 32 > jwt.txt || { log_error "JWT 密钥生成失败"; exit 1; }
-    log_success "JWT 密钥已生成"
-
-    log_info "重命名 sample.env 为 .env..."
+    log_info "正在重命名配置文件..."
     mv sample.env .env || { log_error ".env 文件重命名失败"; exit 1; }
 
-    # 让用户输入 L1_URL 和 L1_BEACON 以及 VPS IP 地址
-    read -p "请输入 L1_URL (RPC 端点): " L1_URL
-    read -p "请输入 L1_BEACON (Beacon API 端点): " L1_BEACON
+    # 直接设置 L1_URL 和 L1_BEACON
+    L1_URL="https://ethereum-sepolia-rpc.publicnode.com"
+    L1_BEACON="https://ethereum-sepolia-beacon-api.publicnode.com"
+    
+    # 提示用户输入 VPS IP 地址
     read -p "请输入你的 VPS IP 地址: " VPS_IP
 
     log_info "配置 .env 文件..."
@@ -108,36 +108,57 @@ install_and_setup_node() {
     log_success ".env 文件配置完成"
 
     log_info "配置 docker-compose.yml 文件..."
-    # 在 docker-compose.yml 中替换 <your_node_ip_address>
-    sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "docker-compose.yml 文件配置失败"; exit 1; }
+    sed -i "s|<your_node_public_ip>|$VPS_IP|" docker-compose.yml || { log_error "docker-compose.yml 文件配置失败"; exit 1; }
     log_success "docker-compose.yml 文件配置完成"
 
-    show_menu
+    log_info "正在启动节点..."
+    docker-compose up -d || { log_error "节点启动失败"; exit 1; }
+    log_success "节点启动完成"
 }
 
-# 启动 Docker 容器
-start_docker() {
-    log_info "启动 Docker 容器..."
-    docker-compose up -d || { log_error "Docker 容器启动失败"; exit 1; }
-    log_success "Docker 容器启动成功"
-    show_menu
+# 查看节点日志
+function view_logs() {
+    log_info "正在查看节点日志..."
+    echo -e "${YELLOW}按 Ctrl+C 退出日志查看，返回主菜单${RESET}"
+    docker-compose logs -f op-node-minato &
+    docker-compose logs -f op-geth-minato &
+    wait # 让用户手动 Ctrl+C 退出日志查看
 }
 
-# 检查日志
-check_logs() {
-    echo -e "${BOLD}请选择要查看的日志:${RESET}"
-    echo "1) 检查 op-node-minato 日志"
-    echo "2) 检查 op-geth-minato 日志"
-    echo "3) 返回上一级"
-    echo -n "请输入你的选择: "
-    read log_choice
-    case $log_choice in
-        1) log_info "检查 op-node-minato 日志..." ; docker-compose logs -f op-node-minato ;;
-        2) log_info "检查 op-geth-minato 日志..." ; docker-compose logs -f op-geth-minato ;;
-        3) show_menu ;;
-        *) log_warning "无效选项，请重新选择。" ; check_logs ;;
-    esac
+# 主菜单
+function main_menu() {
+    while true; do
+        clear
+        echo -e "${BOLD}Minato 节点自动化安装脚本${RESET}"
+        echo "==========================="
+        echo "1. 生成 JWT 密钥并安装节点"
+        echo "2. 启动节点"
+        echo "3. 查看日志"
+        echo "4. 退出"
+        echo "==========================="
+        read -p "请选择一个选项 (1-4): " choice
+
+        case $choice in
+            1)
+                setup_node
+                ;;
+            2)
+                view_logs
+                ;;
+            3)
+                view_logs
+                ;;
+            4)
+                log_info "退出脚本，感谢使用！"
+                exit 0
+                ;;
+            *)
+                log_warning "无效的选项，请重新输入。"
+                read -p "按 Enter 继续..."
+                ;;
+        esac
+    done
 }
 
-# 启动菜单
-show_menu
+# 启动主菜单
+main_menu
