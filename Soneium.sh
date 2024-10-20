@@ -44,18 +44,32 @@ configure_env() {
         read -p "请输入 L1_URL (例如: https://ethereum-sepolia-rpc.publicnode.com): " L1_URL
         read -p "请输入 L1_BEACON (例如: https://ethereum-sepolia-beacon-api.publicnode.com): " L1_BEACON
         read -p "请输入您的 VPS IP 地址: " P2P_IP
-        read -p "请输入 RPC 端口 (默认 9545): " RPC_PORT
+        read -p "请输入 L2_URL (默认: http://localhost:9545): " L2_URL
+        read -p "请输入 L1_TRUST_RPC (true/false, 默认: true): " L1_TRUST_RPC
+        read -p "请输入 RPC 地址 (默认: 127.0.0.1): " RPC_ADDR
+        read -p "请输入 RPC 端口 (默认: 9545): " RPC_PORT
 
-        # 如果用户没有输入 RPC 端口，设置默认值
-        if [ -z "$RPC_PORT" ]; then
-            RPC_PORT=9545
-        fi
+        # 如果用户没有输入特定值，使用默认值
+        L2_URL=${L2_URL:-"http://localhost:9545"}
+        L1_TRUST_RPC=${L1_TRUST_RPC:-"true"}
+        RPC_ADDR=${RPC_ADDR:-"127.0.0.1"}
+        RPC_PORT=${RPC_PORT:-"9545"}
 
         cat <<EOL > .env
 L1_URL=${L1_URL}
 L1_BEACON=${L1_BEACON}
 P2P_ADVERTISE_IP=${P2P_IP}
+L2_URL=${L2_URL}
+L2_JWT_SECRET=jwt.txt
+L1_TRUST_RPC=${L1_TRUST_RPC}
+RPC_ADDR=${RPC_ADDR}
 RPC_PORT=${RPC_PORT}
+SYNC_MODE=full
+L1_RPC_KIND=geth
+METRICS_ENABLED=false
+METRICS_PORT=9100
+OP_NODE_P2P_PEER_BANNING=false
+ROLLUP_CONFIG=你的Rollup配置文件路径  # 如果有的话
 EOL
 
         echo -e "${GREEN}.env 文件已创建并配置！${NC}"
