@@ -120,9 +120,11 @@ install_and_setup_node() {
     # 替换 <your_node_ip_address>
     sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "替换 docker-compose.yml 中的 IP 地址失败"; exit 1; }
 
-    # 确保 command 部分存在并插入 --nat=extip 参数
+    # 确保 command 或 entrypoint 部分存在并插入 --nat=extip 参数
     if grep -q "command:" docker-compose.yml; then
         sed -i "/command:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml || { log_error "在 command 中插入 --nat=extip 参数失败。"; exit 1; }
+    elif grep -q "entrypoint:" docker-compose.yml; then
+        sed -i "/entrypoint:/a \ \ \ \ --nat=extip=$VPS_IP" docker-compose.yml || { log_error "在 entrypoint 中插入 --nat=extip 参数失败。"; exit 1; }
     else
         sed -i "/op-geth-minato/a \ \ \ \ command: --nat=extip=$VPS_IP" docker-compose.yml || { log_error "添加 command 行失败。"; exit 1; }
     fi
