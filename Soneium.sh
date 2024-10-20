@@ -39,7 +39,7 @@ log_error() {
 }
 
 # 检查脚本是否以 root 权限运行
-if [ "$EUID" -ne 0 ]; then
+if [ "$EUID" -ne 0" ]; then
     log_error "请以 root 权限运行此脚本"
     exit 1
 fi
@@ -103,7 +103,7 @@ install_and_setup_node() {
     # 固定的 Minato 网络的 RPC 端点和 Beacon API 端点
     L1_URL="https://rpc.minato.soneium.org/"
     L1_BEACON="https://explorer-testnet.soneium.org/"
-    read -p "请输入你的 VPS IP 地址: " VPS_IP
+    read -p "请输入你的 VPS 公共 IP 地址: " VPS_IP
 
     log_info "配置 .env 文件..."
     sed -i "s|L1_URL=.*|L1_URL=$L1_URL|" .env
@@ -117,7 +117,7 @@ install_and_setup_node() {
         exit 1
     fi
 
-    # 替换 <your_node_ip_address>
+    # 替换 <your_node_ip_address> 为用户输入的实际 IP 地址
     sed -i "s|<your_node_ip_address>|$VPS_IP|" docker-compose.yml || { log_error "替换 docker-compose.yml 中的 IP 地址失败"; exit 1; }
 
     # 确保 command 或 entrypoint 部分存在并插入 --nat=extip 参数
